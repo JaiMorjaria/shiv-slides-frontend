@@ -252,7 +252,7 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
             break; // success
           } catch (err) {
             lastError = err;
-            console.error(`Gemini error on chunk ${i + 1}, attempt ${attempt + 1}:`, err, '\nInput chunk:', chunks[i]);
+            console.error(`Gemini error on chunk ${i + 1}, attempt ${attempt + 1}:`, lastError, '\nInput chunk:', chunks[i]);
             await sleep(1000); // short wait before retry
           }
           attempt++;
