@@ -108,7 +108,7 @@ interface Chunk {
 function chunkBySubsubsectionOrSection(content: string): Chunk[] {
   // Try to split by \subsubsection first, fallback to \section if none found (like Python)
   const subsubRegex = /\\subsubsection\{([^}]*)\}/g;
-  let result = [];
+  const result = [];
   let lastIndex = 0;
   let match;
   let prevTitle = null;
@@ -131,7 +131,7 @@ function chunkBySubsubsectionOrSection(content: string): Chunk[] {
   // If no subsubsections found, fallback to splitting by \section
   if (result.length === 0) {
     const sectionRegex = /\\section\{([^}]*)\}/g;
-    let sectionResult = [];
+    const sectionResult = [];
     let lastSectionIndex = 0;
     let sectionMatch;
     let prevSectionTitle = null;
@@ -235,7 +235,7 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
       if (!window.texContent) throw new Error('No .tex file loaded');
       // Chunk the LaTeX
       const chunks = chunkBySubsubsectionOrSection(window.texContent);
-      let rewritten = [];
+      const rewritten = [];
       for (let i = 0; i < chunks.length; i++) {
         setOutput(`Processing chunk ${i + 1} of ${chunks.length}...`);
         console.log(`Chunk ${i + 1}`);

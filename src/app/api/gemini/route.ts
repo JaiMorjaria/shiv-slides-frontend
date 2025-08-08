@@ -37,9 +37,8 @@ export async function POST(req: NextRequest) {
       contents,
       config: generationConfig,
     };
-
-    // Stream Gemini output and collect the full result
-    let rewrittenChunk = await ai.models.generateContent(genReq);
+    
+    const rewrittenChunk = await ai.models.generateContent(genReq);
 
     if(rewrittenChunk !== null && rewrittenChunk.text) {
       const rewrittenChunkText = rewrittenChunk.text;
