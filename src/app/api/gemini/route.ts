@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 // Initialize Vertex with your Cloud project and location
 const ai = new GoogleGenAI({
   vertexai: true,
   project: '975869561973',
-  location: 'us-central1'
+  location: 'us-central1',
+  apiKey: GEMINI_API_KEY
 });
 const model = 'projects/975869561973/locations/us-central1/endpoints/1786384238229061632';
 
@@ -37,8 +39,9 @@ export async function POST(req: NextRequest) {
       contents,
       config: generationConfig,
     };
-    
-    const rewrittenChunk = await ai.models.generateContent(genReq);
+
+    // Stream Gemini output and collect the full result
+    let rewrittenChunk = await ai.models.generateContent(genReq);
 
     if(rewrittenChunk !== null && rewrittenChunk.text) {
       const rewrittenChunkText = rewrittenChunk.text;
