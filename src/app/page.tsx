@@ -1,103 +1,349 @@
-import Image from "next/image";
+"use client";
+import React, { useState } from 'react';
+
+// const SYSTEM_PROMPT = `You are a LaTeX slide generator trained on Shiv Morjaria’s lecture slides. Convert input text into professional, dense LaTeX slides in his style.
+
+// Formatting Rules:
+
+// Output only valid LaTeX using \\begin{frame} / \\end{frame}
+// Use \\frametitle{} for titles
+// Add \\pause after each sentence and list item
+// Use full sentences and never split bullets or ideas across frames
+// Make each frame dense (≥ 500 characters). Merge short content to avoid sparse slides
+// Preserve technical tone — no casual phrases or markdown
+// Use concise, topic-specific frame titles
+// Do not include source lines or markdown formatting
+// `;
+
+// const FEW_SHOT_EXAMPLES = `Example 1:
+// Input: The ORSA is an internally conducted assessment of an insurer's risks, capital needs and solvency position. ORSA should:
+
+// \\begin{itemize}
+//     \\item Consider all foreseeable and relevant material risks
+//     \\item Be forward looking
+//     \\item Align with the insurer's business and strategic planning
+//     \\item Include stress and scenario testing to determine needs, risks and capital adequacy
+//     \\item Be available for OSFI to review, if requested
+// \\end{itemize}
+
+// Output:
+// \\begin{frame}{ORSA Overview}
+// \\pause
+
+// The ORSA is an internally conducted assessment of an insurer's risks, capital needs and solvency position. ORSA should: \\pause
+
+// \\begin{itemize}
+//     \\item Consider all foreseeable and relevant material risks
+//     \\item Be forward looking
+//     \\item Align with the insurer's business and strategic planning
+//     \\item Include stress and scenario testing to determine needs, risks and capital adequacy
+//     \\item Be available for OSFI to review, if requested
+// \\end{itemize}
+// \\end{frame}
+
+// Example 2:
+// Input: There are five main elements that every ORSA should, at minimum, address:
+
+// \\begin{enumerate}
+//     \\item Comprehensive Risk Identification and Assessment
+//     \\item Relating Risk to Capital
+//     \\item Oversight
+//     \\item Monitoring and Reporting
+//     \\item Internal Controls and Objective Review
+// \\end{enumerate}
+
+// Output:
+// \\begin{frame}{Key Considerations}
+// \\pause
+// Five main elements for every ORSA to address: \\pause
+
+// \\begin{enumerate}
+//     \\item Comprehensive Risk Identification and Assessment
+//     \\item Relating Risk to Capital
+//     \\item Oversight
+//     \\item Monitoring and Reporting
+//     \\item Internal Controls and Objective Review
+// \\end{enumerate}
+// \\end{frame}
+
+// Example 3:
+// Input:
+// \\begin{itemize}
+//     \\item ERM should utilize the stress-testing results to identify and implement countermeasures to improve the firm's solvency including:
+//     \\begin{itemize}
+//         \\item Raising additional capital
+//         \\item Slowing/ceasing new business
+//         \\item Entering reinsurance arrangements
+//         \\item Changing product pricing
+//         \\item Changes in business mix
+//     \\end{itemize}
+// \\end{itemize}
+
+// Output:
+// \\begin{frame}{Stress-Testing for ERM}
+// \\pause
+
+// ERM should use stress-testing results to implement solvency-improving countermeasures, including: \\pause
+// \\begin{itemize}
+//     \\item Raising additional capital
+//     \\item Slowing/ceasing new business
+//     \\item Entering reinsurance arrangements
+//     \\item Changing product pricing
+//     \\item Changes in business mix
+// \\end{itemize}
+// \\end{frame}
+
+// Now convert this input text following the same style and format:`;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+interface Chunk {
+  title: string;
+  content: string;
+}
+
+function chunkBySubsubsectionOrSection(content: string): Chunk[] {
+  // Try to split by \subsubsection first, fallback to \section if none found (like Python)
+  const subsubRegex = /\\subsubsection\{([^}]*)\}/g;
+  let result = [];
+  let lastIndex = 0;
+  let match;
+  let prevTitle = null;
+  while ((match = subsubRegex.exec(content)) !== null) {
+    if (prevTitle !== null) {
+      result.push({
+        title: prevTitle,
+        content: content.substring(lastIndex, match.index).trim(),
+      });
+    }
+    prevTitle = match[1];
+    lastIndex = subsubRegex.lastIndex;
+  }
+  if (prevTitle !== null) {
+    result.push({
+      title: prevTitle,
+      content: content.substring(lastIndex).trim(),
+    });
+  }
+  // If no subsubsections found, fallback to splitting by \section
+  if (result.length === 0) {
+    const sectionRegex = /\\section\{([^}]*)\}/g;
+    let sectionResult = [];
+    let lastSectionIndex = 0;
+    let sectionMatch;
+    let prevSectionTitle = null;
+    while ((sectionMatch = sectionRegex.exec(content)) !== null) {
+      if (prevSectionTitle !== null) {
+        sectionResult.push({
+          title: prevSectionTitle,
+          content: content.substring(lastSectionIndex, sectionMatch.index).trim(),
+        });
+      }
+      prevSectionTitle = sectionMatch[1];
+      lastSectionIndex = sectionRegex.lastIndex;
+    }
+    if (prevSectionTitle !== null) {
+      sectionResult.push({
+        title: prevSectionTitle,
+        content: content.substring(lastSectionIndex).trim(),
+      });
+    }
+    return sectionResult;
+  }
+  return result;
+}
+
+
+async function callGemini(chunk: string, sectionTitle: string): Promise<string> {
+  const response = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chunk, sectionTitle })
+  });
+  const data = await response.json();
+  console.log('Gemini response data:', data)
+  if (data.error) throw new Error(data.error);
+  return data.rewrittenChunkText;
+}
+
+// For type-safe window.texContent
+declare global {
+  interface Window {
+    texContent?: string;
+  }
+}
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [processing, setProcessing] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [downloadUrl, setDownloadUrl] = useState<string>('');
+  const [fileName, setFileName] = useState<string>('');
+  const [output, setOutput] = useState<string>('');
+  const keyTopicsSlide = `
+\\begin{frame}[shrink]
+\\frametitle{Key Exam Topics}
+\\tableofcontents[hideallsubsections]
+\\end{frame}
+`;
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
+const summarySlide = `
+\\begin{frame}[shrink]
+\\frametitle{Summary}
+\\tableofcontents[hideallsubsections]
+\\end{frame}
+`;
+
+function makeTitleSlide(sectionTitle:string, sourceValue:string) {
+  return `
+\\begin{frame}[c]\\frametitle{${sectionTitle}}
+    \\begin{center}
+    \\Large{\\textbf{${sectionTitle}}}
+
+    \\normalsize
+    \\vspace{3em}
+
+    \\textit{Source: ${sourceValue}}
+    \\vspace{1em}
+
+    Video By: Shiv Morjaria, FSA, MAAA
+    \\end{center}
+\\end{frame}
+`;
+}
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    setOutput('');
+    setDownloadUrl('');
+    setError('');
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setFileName(file.name);
+    const text = await file.text();
+    window.texContent = text; // for debugging
+  };
+
+  const handleProcess = async (): Promise<void> => {
+    setProcessing(true);
+    setError('');
+    setOutput('');
+    setDownloadUrl('');
+    try {
+      if (!window.texContent) throw new Error('No .tex file loaded');
+      // Chunk the LaTeX
+      const chunks = chunkBySubsubsectionOrSection(window.texContent);
+      let rewritten = [];
+      for (let i = 0; i < chunks.length; i++) {
+        setOutput(`Processing chunk ${i + 1} of ${chunks.length}...`);
+        console.log(`Chunk ${i + 1}`);
+        // Retry Gemini call up to 3 times if error (like Python robustness)
+        let rewrittenChunk = null;
+        let attempt = 0;
+        let lastError = null;
+        while (attempt < 3) {
+          try {
+            rewrittenChunk = await callGemini(chunks[i].content, chunks[i].title);
+            if (!rewrittenChunk) {
+              throw new Error('No output');
+            }
+            break; // success
+          } catch (err) {
+            lastError = err;
+            console.error(`Gemini error on chunk ${i + 1}, attempt ${attempt + 1}:`, err, '\nInput chunk:', chunks[i]);
+            await sleep(1000); // short wait before retry
+          }
+          attempt++;
+        }
+        if (!rewrittenChunk) {
+          rewrittenChunk = `% ERROR: Gemini failed after 3 attempts on chunk ${i + 1}`;
+        }
+        rewritten.push(rewrittenChunk);
+        if (i < chunks.length - 1) {
+          await sleep(5000); // 2 second delay between requests
+        }
+      }
+      // Extract section title from the first \\section or fallback to filename
+      let sectionTitle = fileName.replace(/\.tex$/i, '');
+      const sectionMatch = window.texContent.match(/\\section\{([^}]*)\}/);
+      if (sectionMatch) {
+        sectionTitle = sectionMatch[1];
+      }
+      const sourceValue = fileName;
+
+      const newTex =
+        makeTitleSlide(sectionTitle, sourceValue) +
+        '\n\n' +
+        keyTopicsSlide +
+        '\n\n' +
+        rewritten.join('\n\n') +
+        '\n\n' +
+        summarySlide;
+
+      setOutput(newTex);
+      // Download link
+      const blob = new Blob([newTex], { type: 'text/x-tex' });
+      setDownloadUrl(URL.createObjectURL(blob));
+    } catch (e) {
+      if (e instanceof Error) {
+        setError(e.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
+    }
+    setProcessing(false);
+  };
+
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh'}}>
+      <h1>Hi, Shiv.</h1>
+      <h2>Upload your .tex file and Gemini will convert it to slides for you.</h2>
+      <div style={{ marginBottom: 20 }}>
+        <input
+          type="file"
+          accept=".tex"
+          onChange={handleFileChange}
+          disabled={processing}
+        />
+        {fileName && <span style={{ marginLeft: 10 }}>{fileName}</span>}
+      </div>
+      <button
+        onClick={handleProcess}
+        disabled={!fileName || processing}
+        style={{ padding: '8px 20px', fontSize: 16 }}
+      >
+        {processing ? 'Processing...' : 'Rewrite & Download'}
+      </button>
+      {error && <div style={{ color: 'red', marginTop: 20 }}>{error}</div>}
+      {output && !processing && (
+        <div style={{ marginTop: 30 }}>
+          <h3>Output Preview</h3>
+          <pre style={{
+  background: '#181818',
+  color: '#f8f8f2',
+  padding: 15,
+  maxHeight: 300,
+  overflow: 'auto',
+  borderRadius: 8,
+  fontFamily: "'Fira Mono', 'Consolas', 'Menlo', monospace",
+  boxShadow: '0 2px 12px #0005'
+}}>{output.slice(0, 2000)}{output.length > 2000 ? '\n... (truncated)' : ''}</pre>
+        </div>
+      )}
+      {downloadUrl && (
+        <div style={{ marginTop: 20 }}>
+          <a href={downloadUrl} download={fileName.replace(/\.tex$/, '_slides.tex')} style={{ fontSize: 18, color: 'blue' }}>
+            Download Slides .tex
           </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+      <div style={{ marginTop: 40, fontSize: 12, color: '#888' }}>
+        <b>Warning:</b> Your Gemini API key is used only in this browser session and never sent anywhere else. For demo/hackathon use only.
+      </div>
     </div>
   );
 }
+
+
