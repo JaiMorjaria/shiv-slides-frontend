@@ -54,9 +54,9 @@ export async function POST(req: NextRequest) {
     ];
     
     const result = await generativeModel.generateContent({ contents, generationConfig });
-
-    if (result) {
-      return NextResponse.json({ result }, { status: 200 });
+    const rewrittenChunkText = result.response?.candidates[0].content.parts[0].text;
+    if (rewrittenChunkText) {
+      return NextResponse.json({ rewrittenChunkText }, { status: 200 });
     } else {
       return NextResponse.json({ error: 'Failed to get a response from the model.' }, { status: 500 });
     }

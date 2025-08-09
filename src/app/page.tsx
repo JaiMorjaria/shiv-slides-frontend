@@ -164,7 +164,6 @@ async function callGemini(chunk: string, sectionTitle: string): Promise<string> 
     body: JSON.stringify({ chunk, sectionTitle })
   });
   const data = await response.json();
-  console.log('Gemini response data:', data)
   if (data.error) throw new Error(data.error);
   return data.rewrittenChunkText;
 }
@@ -182,6 +181,8 @@ export default function Home() {
   const [downloadUrl, setDownloadUrl] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
   const [output, setOutput] = useState<string>('');
+  const [showInfo, setShowInfo] = useState<boolean>(false);
+  const [loadingSection, setLoadingSection] = useState<string | null>(null);
   const keyTopicsSlide = `
 \\begin{frame}[shrink]
 \\frametitle{Key Exam Topics}
@@ -237,8 +238,7 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
       const chunks = chunkBySubsubsectionOrSection(window.texContent);
       const rewritten = [];
       for (let i = 0; i < chunks.length; i++) {
-        setOutput(`Processing chunk ${i + 1} of ${chunks.length}...`);
-        console.log(`Chunk ${i + 1}`);
+        setLoadingSection(chunks[i].title || `Chunk ${i + 1}`);
         // Retry Gemini call up to 3 times if error (like Python robustness)
         let rewrittenChunk = null;
         let attempt = 0;
@@ -252,7 +252,6 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
             break; // success
           } catch (err) {
             lastError = err;
-            console.error(`Gemini error on chunk ${i + 1}, attempt ${attempt + 1}:`, lastError, '\nInput chunk:', chunks[i]);
             await sleep(1000); // short wait before retry
           }
           attempt++;
@@ -265,6 +264,7 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
           await sleep(5000); // 2 second delay between requests
         }
       }
+      setLoadingSection(null);
       // Extract section title from the first \\section or fallback to filename
       let sectionTitle = fileName.replace(/\.tex$/i, '');
       const sectionMatch = window.texContent.match(/\\section\{([^}]*)\}/);
@@ -287,6 +287,7 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
       const blob = new Blob([newTex], { type: 'text/x-tex' });
       setDownloadUrl(URL.createObjectURL(blob));
     } catch (e) {
+      setLoadingSection(null);
       if (e instanceof Error) {
         setError(e.message);
       } else {
@@ -296,53 +297,91 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
     setProcessing(false);
   };
 
+
   return (
-    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh'}}>
-      <h1>Hi, Shiv.</h1>
-      <h2>Upload your .tex file and Gemini will convert it to slides for you.</h2>
-      <div style={{ marginBottom: 20 }}>
-        <input
-          type="file"
-          accept=".tex"
-          onChange={handleFileChange}
-          disabled={processing}
-        />
-        {fileName && <span style={{ marginLeft: 10 }}>{fileName}</span>}
+    <>
+      {/* Hero Section */}
+      <div className="hero">
+        <h1 style={{ fontSize: '3.2rem', fontWeight: 800, letterSpacing: '-1.5px', marginBottom: '0.5rem', lineHeight: 1.13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+          <span role="img" aria-label="robot" style={{ fontSize: '2.3rem', verticalAlign: 'middle' }}>🤖</span>
+          Hi, Shiv.
+        </h1>
+        <div className="subtitle" style={{ fontSize: '1.25rem', fontWeight: 500, maxWidth: 540, margin: '0 auto' }}>
+          Turn your DSMs into dense, professional Shiv-style slides with one click.
+        </div>
+        <button className="about-btn" onClick={() => setShowInfo(true)}>
+          Why did you do this, buttface? What the hell is this?
+        </button>
       </div>
-      <button
-        onClick={handleProcess}
-        disabled={!fileName || processing}
-        style={{ padding: '8px 20px', fontSize: 16 }}
-      >
-        {processing ? 'Processing...' : 'Rewrite & Download'}
-      </button>
-      {error && <div style={{ color: 'red', marginTop: 20 }}>{error}</div>}
-      {output && !processing && (
-        <div style={{ marginTop: 30 }}>
-          <h3>Output Preview</h3>
-          <pre style={{
-  background: '#181818',
-  color: '#f8f8f2',
-  padding: 15,
-  maxHeight: 300,
-  overflow: 'auto',
-  borderRadius: 8,
-  fontFamily: "'Fira Mono', 'Consolas', 'Menlo', monospace",
-  boxShadow: '0 2px 12px #0005'
-}}>{output.slice(0, 2000)}{output.length > 2000 ? '\n... (truncated)' : ''}</pre>
+
+      {/* Info Modal */}
+      {showInfo && (
+        <div className="info-modal-overlay" onClick={() => setShowInfo(false)}>
+          <div className="info-modal" onClick={e => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowInfo(false)} aria-label="Close info">×</button>
+            <h2 style={{ marginTop: 0 }}>About this project</h2>
+            <p> Hi Shiv, </p>
+            <p> I don't like pretending things are just okay when I mess up, but I've been doing it for far too long. </p>
+            <p> I didn't prioritize your work nearly enough over the years, and I'm sorry for that. While sometimes my work is really good, other times it's a mess, and you deserve something more reliable. </p>
+            <p> Consider this an apology, and hopefully something that you'll find useful. Upload any of your past readings and let's see how well an AI trained on your writing style does. </p>
+            <p> <b> Love you, big bro. </b></p>
+          </div>
         </div>
       )}
-      {downloadUrl && (
-        <div style={{ marginTop: 20 }}>
-          <a href={downloadUrl} download={fileName.replace(/\.tex$/, '_slides.tex')} style={{ fontSize: 18, color: 'blue' }}>
+
+      {/* Upload Card */}
+      <div className="upload-card">
+        <label className="upload-label">
+          <input
+            type="file"
+            accept=".tex"
+            onChange={handleFileChange}
+            disabled={processing}
+          />
+          {fileName ? 'Change File' : 'Choose .tex File'}
+        </label>
+        {fileName && <div className="selected-file">{fileName}</div>}
+        <button
+          onClick={handleProcess}
+          disabled={!fileName || processing}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded shadow"
+          style={{ fontSize: 17, width: '100%', maxWidth: 250 }}
+        >
+          {processing ? 'Processing...' : 'Rewrite & Download'}
+        </button>
+        {error && <div style={{ color: 'red', marginTop: 10 }}>{error}</div>}
+        {downloadUrl && (
+          <a href={downloadUrl} download={fileName.replace(/\.tex$/, '_slides.tex')} style={{ fontSize: 17, color: '#6366f1', marginTop: 10, fontWeight: 600 }}>
             Download Slides .tex
           </a>
+        )}
+      </div>
+
+      {/* Output Preview Window */}
+      {output && !processing && (
+        <div className="preview-window">
+          <div style={{ fontWeight: 700, fontSize: '1.12rem', marginBottom: 8, color: '#6366f1' }}>Output Preview</div>
+          <pre style={{ margin: 0, background: 'none', color: '#232323', fontSize: '1.04rem', maxHeight: 320, overflow: 'auto', border: 'none', boxShadow: 'none', padding: 0 }}>
+            {output.slice(0, 2000)}{output.length > 2000 ? '\n... (truncated)' : ''}
+          </pre>
         </div>
       )}
-      <div style={{ marginTop: 40, fontSize: 12, color: '#888' }}>
+
+      {/* Inline Loading Animation */}
+      {processing && loadingSection && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 0 1.5rem 0' }}>
+          <div className="loading-spinner" style={{ width: 36, height: 36, marginBottom: 10 }}></div>
+          <div className="loading-section-name" style={{ fontSize: '1.08rem', color: '#6366f1', fontWeight: 600 }}>
+            Processing section: <span style={{ fontWeight: 700 }}>{loadingSection}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Warning */}
+      <div style={{ marginTop: 24, fontSize: 13, color: '#888', textAlign: 'center', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto' }}>
         <b>Warning:</b> Your Gemini API key is used only in this browser session and never sent anywhere else. For demo/hackathon use only.
       </div>
-    </div>
+    </>
   );
 }
 
