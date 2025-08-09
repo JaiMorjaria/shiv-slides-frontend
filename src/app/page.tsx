@@ -321,9 +321,9 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
             <button className="close-btn" onClick={() => setShowInfo(false)} aria-label="Close info">×</button>
             <h2 style={{ marginTop: 0 }}>About this project</h2>
             <p> Hi Shiv, </p>
-            <p> I don't like pretending things are just okay when I mess up, but I've been doing it for far too long. </p>
-            <p> I didn't prioritize your work nearly enough over the years, and I'm sorry for that. While sometimes my work is really good, other times it's a mess, and you deserve something more reliable. </p>
-            <p> Consider this an apology, and hopefully something that you'll find useful. Upload any of your past readings and let's see how well an AI trained on your writing style does. </p>
+            <p> I don&#39;t like pretending things are just okay when I mess up, but I&#39;ve been doing it for far too long. </p>
+            <p> I didn&#39;t prioritize your work nearly enough over the years, and I&#39;m sorry for that. While sometimes my work is really good, other times it&#39;s a mess, and you deserve something more reliable. </p>
+            <p> Consider this an apology, and hopefully something that you&#39;ll find useful. Upload any of your past readings and let&#39;s see how well an AI trained on your writing style does. </p>
             <p> <b> Love you, big bro. </b></p>
           </div>
         </div>
