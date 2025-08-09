@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: ##ffffff;
 }
 
 @theme inline {
@@ -98,9 +98,7 @@ body {
 }
 
 .upload-card {
-  background: rgba(255,255,255,0.75);
   border-radius: 1.2rem;
-  box-shadow: 0 2px 18px #6366f122;
   padding: 2.2rem 2rem 1.5rem 2rem;
   margin: 0 auto 2rem auto;
   max-width: 420px;
