@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     ];
     
     const result = await generativeModel.generateContent({ contents, generationConfig });
-    const rewrittenChunkText = result.response?.candidates[0].content.parts[0].text;
+    const rewrittenChunkText = result.response?.candidates?.[0].content.parts[0].text;
     if (rewrittenChunkText) {
       return NextResponse.json({ rewrittenChunkText }, { status: 200 });
     } else {
