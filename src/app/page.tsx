@@ -1,99 +1,6 @@
 "use client";
+import { parse } from 'path';
 import React, { useState } from 'react';
-
-// const SYSTEM_PROMPT = `You are a LaTeX slide generator trained on Shiv Morjaria’s lecture slides. Convert input text into professional, dense LaTeX slides in his style.
-
-// Formatting Rules:
-
-// Output only valid LaTeX using \\begin{frame} / \\end{frame}
-// Use \\frametitle{} for titles
-// Add \\pause after each sentence and list item
-// Use full sentences and never split bullets or ideas across frames
-// Make each frame dense (≥ 500 characters). Merge short content to avoid sparse slides
-// Preserve technical tone — no casual phrases or markdown
-// Use concise, topic-specific frame titles
-// Do not include source lines or markdown formatting
-// `;
-
-// const FEW_SHOT_EXAMPLES = `Example 1:
-// Input: The ORSA is an internally conducted assessment of an insurer's risks, capital needs and solvency position. ORSA should:
-
-// \\begin{itemize}
-//     \\item Consider all foreseeable and relevant material risks
-//     \\item Be forward looking
-//     \\item Align with the insurer's business and strategic planning
-//     \\item Include stress and scenario testing to determine needs, risks and capital adequacy
-//     \\item Be available for OSFI to review, if requested
-// \\end{itemize}
-
-// Output:
-// \\begin{frame}{ORSA Overview}
-// \\pause
-
-// The ORSA is an internally conducted assessment of an insurer's risks, capital needs and solvency position. ORSA should: \\pause
-
-// \\begin{itemize}
-//     \\item Consider all foreseeable and relevant material risks
-//     \\item Be forward looking
-//     \\item Align with the insurer's business and strategic planning
-//     \\item Include stress and scenario testing to determine needs, risks and capital adequacy
-//     \\item Be available for OSFI to review, if requested
-// \\end{itemize}
-// \\end{frame}
-
-// Example 2:
-// Input: There are five main elements that every ORSA should, at minimum, address:
-
-// \\begin{enumerate}
-//     \\item Comprehensive Risk Identification and Assessment
-//     \\item Relating Risk to Capital
-//     \\item Oversight
-//     \\item Monitoring and Reporting
-//     \\item Internal Controls and Objective Review
-// \\end{enumerate}
-
-// Output:
-// \\begin{frame}{Key Considerations}
-// \\pause
-// Five main elements for every ORSA to address: \\pause
-
-// \\begin{enumerate}
-//     \\item Comprehensive Risk Identification and Assessment
-//     \\item Relating Risk to Capital
-//     \\item Oversight
-//     \\item Monitoring and Reporting
-//     \\item Internal Controls and Objective Review
-// \\end{enumerate}
-// \\end{frame}
-
-// Example 3:
-// Input:
-// \\begin{itemize}
-//     \\item ERM should utilize the stress-testing results to identify and implement countermeasures to improve the firm's solvency including:
-//     \\begin{itemize}
-//         \\item Raising additional capital
-//         \\item Slowing/ceasing new business
-//         \\item Entering reinsurance arrangements
-//         \\item Changing product pricing
-//         \\item Changes in business mix
-//     \\end{itemize}
-// \\end{itemize}
-
-// Output:
-// \\begin{frame}{Stress-Testing for ERM}
-// \\pause
-
-// ERM should use stress-testing results to implement solvency-improving countermeasures, including: \\pause
-// \\begin{itemize}
-//     \\item Raising additional capital
-//     \\item Slowing/ceasing new business
-//     \\item Entering reinsurance arrangements
-//     \\item Changing product pricing
-//     \\item Changes in business mix
-// \\end{itemize}
-// \\end{frame}
-
-// Now convert this input text following the same style and format:`;
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -105,7 +12,7 @@ interface Chunk {
   content: string;
 }
 
-function chunkBySubsubsectionOrSection(content: string): Chunk[] {
+function chunkBySubsubsection(content: string): Chunk[] {
   // Try to split by \subsubsection first, fallback to \section if none found (like Python)
   const subsubRegex = /\\subsubsection\{([^}]*)\}/g;
   const result = [];
@@ -128,31 +35,7 @@ function chunkBySubsubsectionOrSection(content: string): Chunk[] {
       content: content.substring(lastIndex).trim(),
     });
   }
-  // If no subsubsections found, fallback to splitting by \section
-  if (result.length === 0) {
-    const sectionRegex = /\\section\{([^}]*)\}/g;
-    const sectionResult = [];
-    let lastSectionIndex = 0;
-    let sectionMatch;
-    let prevSectionTitle = null;
-    while ((sectionMatch = sectionRegex.exec(content)) !== null) {
-      if (prevSectionTitle !== null) {
-        sectionResult.push({
-          title: prevSectionTitle,
-          content: content.substring(lastSectionIndex, sectionMatch.index).trim(),
-        });
-      }
-      prevSectionTitle = sectionMatch[1];
-      lastSectionIndex = sectionRegex.lastIndex;
-    }
-    if (prevSectionTitle !== null) {
-      sectionResult.push({
-        title: prevSectionTitle,
-        content: content.substring(lastSectionIndex).trim(),
-      });
-    }
-    return sectionResult;
-  }
+  
   return result;
 }
 
@@ -174,6 +57,7 @@ declare global {
     texContent?: string;
   }
 }
+
 
 export default function Home() {
   const [processing, setProcessing] = useState<boolean>(false);
@@ -215,6 +99,61 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
 `;
 }
 
+
+function parse_frames(content: string): string[] {
+  const frameRegex = /(\\begin{frame}[\s\S]*?\\end{frame})/g;
+  const frames = [];
+  let match;
+
+  while ((match = frameRegex.exec(content)) !== null) {
+    frames.push(match[1].trim());
+  }
+
+  return frames;
+}
+
+function isLastTextLine(lines:string[], index:number):boolean {  // Change parameter name
+  if (index === -1 || index === lines.length - 1) {
+    return true; 
+  } else {
+    for (let i = index + 1; i < lines.length; i++) { 
+      if (lines[i].trim() === "" || lines[i].includes("\\end{")) {
+        continue; 
+      } else {
+        return false; 
+      }
+    }
+  }
+  return true;
+}
+
+
+function isTextLine(line:string): boolean {
+  return line.trim() !== "" && !line.includes("\\begin{") && !line.includes("\\end{");
+}
+
+
+function monitor_pauses(chunkText:string): string {
+  const frames = parse_frames(chunkText);
+  
+  return frames.map(frame => {
+    // Remove existing pauses first
+    let cleanFrame = frame.replace(/\\pause/g, '');
+    let lines = cleanFrame.split('\n');
+    
+    return lines.map((line, index) => {
+      if (line.includes("\\begin{") || line.includes("\\end{") || line.includes("\\frametitle{")) {
+        return line;
+      } else if (isTextLine(line) && !isLastTextLine(lines, index)) {
+        return line + " \\pause";  
+      } else {
+        return line; // Structure or last text line
+      }
+    }).join('\n');
+  }).join('\n\n');
+}
+
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     setOutput('');
     setDownloadUrl('');
@@ -235,9 +174,9 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
     try {
       if (!window.texContent) throw new Error('No .tex file loaded');
       // Chunk the LaTeX
-      const chunks = chunkBySubsubsectionOrSection(window.texContent);
+      const chunks = chunkBySubsubsection(window.texContent);
       const rewritten = [];
-      for (let i = 0; i < chunks.length; i++) {
+      for (let i = 1; i < chunks.length; i++) {
         setLoadingSection(chunks[i].title || `Chunk ${i + 1}`);
         // Retry Gemini call up to 3 times if error (like Python robustness)
         let rewrittenChunk = null;
@@ -259,7 +198,11 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
         if (!rewrittenChunk) {
           rewrittenChunk = `% ERROR: Gemini failed after 3 attempts on chunk ${i + 1}`;
         }
+        
+        rewrittenChunk = monitor_pauses(rewrittenChunk);
         rewritten.push(rewrittenChunk);
+
+        
         if (i < chunks.length - 1) {
           await sleep(5000); // 2 second delay between requests
         }
@@ -271,7 +214,7 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
       if (sectionMatch) {
         sectionTitle = sectionMatch[1];
       }
-      const sourceValue = fileName;
+      const sourceValue = window.texContent.match(/\\source\{([^}]*)\}/)?.[1] || fileName;
 
       const newTex =
         makeTitleSlide(sectionTitle, sourceValue) +
@@ -319,11 +262,12 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
         <div className="info-modal-overlay" onClick={() => setShowInfo(false)}>
           <div className="info-modal" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowInfo(false)} aria-label="Close info">×</button>
-            <h2 style={{ marginTop: 0 }}>About this project</h2>
+            <h2 style={{ marginTop: 0, display: 'flex', justifyContent: 'center' }}>About this project</h2>
             <p> Hi Shiv, </p>
             <p> I don&#39;t like pretending things are just okay when I mess up, but I&#39;ve been doing it for far too long. </p>
             <p> I didn&#39;t prioritize your work nearly enough over the years, and I&#39;m sorry for that. While sometimes my work is really good, other times it&#39;s a mess, and you deserve something more reliable. </p>
-            <p> Consider this an apology, and hopefully something that you&#39;ll find useful. Upload any of your past readings and let&#39;s see how well an AI trained on your writing style does. </p>
+            <p> Consider this an apology, and hopefully something that you&#39;ll find useful. Upload one of your completed readings and let&#39;s see how well an AI trained on your writing style does. </p>
+            <p> Also, if you like it, let's talk about other tools I can build for you: flash card maker, HTML converter, anything else you can think of.</p>
             <p> <b> Love you, big bro. </b></p>
           </div>
         </div>
@@ -377,10 +321,6 @@ function makeTitleSlide(sectionTitle:string, sourceValue:string) {
         </div>
       )}
 
-      {/* Warning */}
-      <div style={{ marginTop: 24, fontSize: 13, color: '#888', textAlign: 'center', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto' }}>
-        <b>Warning:</b> Your Gemini API key is used only in this browser session and never sent anywhere else. For demo/hackathon use only.
-      </div>
     </>
   );
 }
