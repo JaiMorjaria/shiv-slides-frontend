@@ -267,7 +267,7 @@ function monitor_pauses(chunkText:string): string {
             <p> I don&#39;t like pretending things are just okay when I mess up, but I&#39;ve been doing it for far too long. </p>
             <p> I didn&#39;t prioritize your work nearly enough over the years, and I&#39;m sorry for that. While sometimes my work is really good, other times it&#39;s a mess, and you deserve something more reliable. </p>
             <p> Consider this an apology, and hopefully something that you&#39;ll find useful. Upload one of your completed readings and let&#39;s see how well an AI trained on your writing style does. </p>
-            <p> Also, if you like it, let's talk about other tools I can build for you: flash card maker, HTML converter, anything else you can think of.</p>
+            <p> Also, if you like it, let&#39;s talk about other tools I can build for you: flash card maker, HTML converter, anything else you can think of.</p>
             <p> <b> Love you, big bro. </b></p>
           </div>
         </div>
