@@ -253,7 +253,7 @@ function monitor_pauses(chunkText:string): string {
           Turn your DSMs into dense, professional Shiv-style slides with one click.
         </div>
         <button className="about-btn" onClick={() => setShowInfo(true)}>
-          Why did you do this, buttface? What the hell is this?
+          Why did you do this, buttface? Apart from the $11,067 elephant in the room?
         </button>
       </div>
 
