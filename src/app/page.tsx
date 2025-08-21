@@ -138,8 +138,8 @@ function monitor_pauses(chunkText:string): string {
   
   return frames.map(frame => {
     // Remove existing pauses first
-    let cleanFrame = frame.replace(/\\pause/g, '');
-    let lines = cleanFrame.split('\n');
+    const cleanFrame = frame.replace(/\\pause/g, '');
+    const lines = cleanFrame.split('\n');
     
     return lines.map((line, index) => {
       if (line.includes("\\begin{") || line.includes("\\end{") || line.includes("\\frametitle{")) {
